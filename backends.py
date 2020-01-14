@@ -50,4 +50,4 @@ class PasteBin:
         return url[:n] + '/raw' + url[n:]
 
 
-backends = [TermBin(), PasteRs(), PasteBin('42d8c13038f701723cf3d145fd6cc08b')]
+backends = [PasteRs(), PasteBin('42d8c13038f701723cf3d145fd6cc08b'), TermBin()]
