@@ -35,8 +35,8 @@ def upload(name: str, data: bytes):
     data, nonce, authTag, key = encrypt(data)
 
     # Now we split data into 100kb chunks
-    chunks = split_into_chunks(data, 10**5)
-    n_chunks = math.ceil(len(data) / 10**5)
+    chunks = list(split_into_chunks(data, 1024*300))
+    n_chunks = len(chunks)
 
     chunk_urls = []
     pastebin = PasteBin()
