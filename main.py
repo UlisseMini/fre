@@ -59,7 +59,7 @@ def upload(name: str, data: bytes):
 def download(fileinfo: dict):
     data = b''
     for (i, url) in enumerate(fileinfo['chunks']):
-        print('Downloading chunk {}'.format(i))
+        print('Downloading chunk {} of {}'.format(i, len(fileinfo['chunks'])))
         chunk = requests.get(url).content
         data += chunk
 
