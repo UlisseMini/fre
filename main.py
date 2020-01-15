@@ -41,8 +41,8 @@ def upload(name: str, data: bytes):
         chunk = compress(chunk)
         chunk, nonce, authTag, key = encrypt(chunk)
 
-        print('Uploading chunk {} out of {}...'.format(i, n_chunks))
         url = pastebin.upload(chunk)
+        print('Uploaded chunk {} ({}) out of {}...'.format(i, url, n_chunks))
         chunk_urls.append({
             'url': url,
 
