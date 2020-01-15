@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-import os, json, requests, zlib
-from backends import backends
+import os, json, requests, zlib, math
+from backends import PasteBin
 
 from Crypto.Cipher import AES
 from base64 import b85encode, b85decode
@@ -15,9 +15,9 @@ def encrypt(data: bytes):
     return ciphertext, aesCipher.nonce, authTag, key
 
 def decrypt(ciphertext: bytes, key: bytes, nonce: bytes, authTag: bytes):
-  aesCipher = AES.new(key, AES.MODE_GCM, nonce)
-  plaintext = aesCipher.decrypt_and_verify(ciphertext, authTag)
-  return plaintext
+    aesCipher = AES.new(key, AES.MODE_GCM, nonce)
+    plaintext = aesCipher.decrypt_and_verify(ciphertext, authTag)
+    return plaintext
 
 def compress(data: bytes):
     return zlib.compress(data, 9)
@@ -25,43 +25,53 @@ def compress(data: bytes):
 def decompress(data: bytes):
     return zlib.decompress(data)
 
+def split_into_chunks(l, n):
+    # looping till length l
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
+
 def upload(name: str, data: bytes):
     data = compress(data)
     data, nonce, authTag, key = encrypt(data)
 
-    urls = []
-    for backend in backends:
-        url = backend.upload(data)
-        urls.append(url)
+    # Now we split data into 100kb chunks
+    chunks = split_into_chunks(data, 10**5)
+    n_chunks = math.ceil(len(data) / 10**5)
 
-    print(json.dumps({
-        'urls': urls,
-        'name': name,
+    chunk_urls = []
+    pastebin = PasteBin()
+    for (i, chunk) in enumerate(chunks):
+        print('Uploading chunk {} out of {}...'.format(i, n_chunks))
+        url = pastebin.upload(chunk)
+        chunk_urls.append(url)
 
-        'nonce':   b85encode(nonce).decode(),
-        'authTag': b85encode(authTag).decode(),
-        'key':     b85encode(key).decode(),
-    }))
+    with open(name + '.json', 'w') as f:
+        json.dump({
+            'chunks': chunk_urls,
+            'name': name,
+
+            'nonce':   b85encode(nonce).decode(),
+            'authTag': b85encode(authTag).decode(),
+            'key':     b85encode(key).decode(),
+        }, f)
 
 
 def download(fileinfo: dict):
-    for url in fileinfo['urls']:
-        try:
-            data = requests.get(url).content
+    data = b''
+    for (i, url) in enumerate(fileinfo['chunks']):
+        print('Downloading chunk {}'.format(i))
+        chunk = requests.get(url).content
+        data += chunk
 
-            data = decrypt(data,
-                           key     = b85decode(fileinfo['key']),
-                           nonce   = b85decode(fileinfo['nonce']),
-                           authTag = b85decode(fileinfo['authTag']))
+    data = decrypt(data,
+                   key     = b85decode(fileinfo['key']),
+                   nonce   = b85decode(fileinfo['nonce']),
+                   authTag = b85decode(fileinfo['authTag']))
 
-            data = decompress(data)
+    data = decompress(data)
 
-            # We got the file!
-            print('Downloaded {} from {}'.format(fileinfo['name'], url))
-            break
-        except Exception as e:
-            # we'll getem next time (in the next loop iteration)
-            print('Failed to get file from {}, {}'.format(url, e))
+    # We got the file!
+    print('Downloaded {} from {}'.format(fileinfo['name'], url))
 
     with open(fileinfo['name'], 'wb') as f:
         f.write(data)
@@ -74,7 +84,7 @@ if __name__ == '__main__':
     Examples
         {} put file.txt
         {} get fileinfo.json
-'''.format(argv[0], argv[0], argv[0]))
+        '''.format(argv[0], argv[0], argv[0]))
         exit()
 
 

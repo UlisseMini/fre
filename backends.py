@@ -21,7 +21,7 @@ class PasteRs:
 
 # Ripped off https://github.com/acidvegas/pastebin thanks acidvegas <3
 class PasteBin:
-    def __init__(self, api_dev_key, timeout = 10):
+    def __init__(self, api_dev_key='42d8c13038f701723cf3d145fd6cc08b', timeout = 10):
         self.api_dev_key = api_dev_key
         self.timeout = timeout
 
@@ -50,4 +50,4 @@ class PasteBin:
         return url[:n] + '/raw' + url[n:]
 
 
-backends = [PasteRs(), PasteBin('42d8c13038f701723cf3d145fd6cc08b'), TermBin()]
+backends = [PasteRs(), PasteBin(), TermBin()]
