@@ -31,9 +31,6 @@ def split_into_chunks(l, n):
         yield l[i:i + n]
 
 def upload(name: str, data: bytes):
-    data = compress(data)
-    data, nonce, authTag, key = encrypt(data)
-
     # Now we split data into 100kb chunks
     chunks = list(split_into_chunks(data, 1024*300))
     n_chunks = len(chunks)
@@ -41,37 +38,43 @@ def upload(name: str, data: bytes):
     chunk_urls = []
     pastebin = PasteBin()
     for (i, chunk) in enumerate(chunks):
+        chunk = compress(chunk)
+        chunk, nonce, authTag, key = encrypt(chunk)
+
         print('Uploading chunk {} out of {}...'.format(i, n_chunks))
         url = pastebin.upload(chunk)
-        chunk_urls.append(url)
+        chunk_urls.append({
+            'url': url,
+
+            'nonce':   b85encode(nonce).decode(),
+            'authTag': b85encode(authTag).decode(),
+            'key':     b85encode(key).decode(),
+        })
 
     with open(name + '.json', 'w') as f:
         json.dump({
             'chunks': chunk_urls,
             'name': name,
-
-            'nonce':   b85encode(nonce).decode(),
-            'authTag': b85encode(authTag).decode(),
-            'key':     b85encode(key).decode(),
         }, f)
 
 
 def download(fileinfo: dict):
     data = b''
-    for (i, url) in enumerate(fileinfo['chunks']):
+    for (i, chunk) in enumerate(fileinfo['chunks']):
         print('Downloading chunk {} of {}'.format(i, len(fileinfo['chunks'])))
-        chunk = requests.get(url).content
-        data += chunk
+        data_chunk = requests.get(chunk['url']).content
 
-    data = decrypt(data,
-                   key     = b85decode(fileinfo['key']),
-                   nonce   = b85decode(fileinfo['nonce']),
-                   authTag = b85decode(fileinfo['authTag']))
+        data_chunk = decrypt(data_chunk,
+                             key     = b85decode(chunk['key']),
+                             nonce   = b85decode(chunk['nonce']),
+                             authTag = b85decode(chunk['authTag']))
 
-    data = decompress(data)
+        data_chunk = decompress(data_chunk)
+
+        data += data_chunk
 
     # We got the file!
-    print('Downloaded {} from {}'.format(fileinfo['name'], url))
+    print('Downloaded {}'.format(fileinfo['name']))
 
     with open(fileinfo['name'], 'wb') as f:
         f.write(data)
