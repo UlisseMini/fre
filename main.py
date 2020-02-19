@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import os, json, requests, zlib, math
-from backends import PasteBin
+from backends import TermBin
 
 from base64 import b85encode, b85decode
 
@@ -16,12 +16,11 @@ def split_into_chunks(l, n):
         yield l[i:i + n]
 
 def upload(name: str, data: bytes):
-    # Now we split data into 100kb chunks
-    chunks = list(split_into_chunks(data, 1024*300))
+    chunks = list(split_into_chunks(data, 1024*500))
     n_chunks = len(chunks)
 
     chunk_urls = []
-    pastebin = PasteBin()
+    pastebin = TermBin()
     for (i, chunk) in enumerate(chunks):
         chunk = compress(chunk)
 
